@@ -1,0 +1,128 @@
+version: "3.9"
+
+services:
+  auth-mongo:
+    image: mongo:7
+    container_name: auth-mongo
+    restart: unless-stopped
+    volumes:
+      - auth_mongo_data:/data/db
+    networks:
+      - training-network
+
+  user-mongo:
+    image: mongo:7
+    container_name: user-mongo
+    restart: unless-stopped
+    volumes:
+      - user_mongo_data:/data/db
+    networks:
+      - training-network
+
+  training-mongo:
+    image: mongo:7
+    container_name: training-mongo
+    restart: unless-stopped
+    volumes:
+      - training_mongo_data:/data/db
+    networks:
+      - training-network
+
+  attendance-mongo:
+    image: mongo:7
+    container_name: attendance-mongo
+    restart: unless-stopped
+    volumes:
+      - attendance_mongo_data:/data/db
+    networks:
+      - training-network
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    restart: unless-stopped
+    env_file:
+      - ./auth-service/.env
+    depends_on:
+      - auth-mongo
+    ports:
+      - "4001:4001"
+    networks:
+      - training-network
+
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    restart: unless-stopped
+    env_file:
+      - ./user-service/.env
+    depends_on:
+      - user-mongo
+      - auth-service
+    ports:
+      - "4002:4002"
+    networks:
+      - training-network
+
+  training-service:
+    build:
+      context: ./training-service
+      dockerfile: Dockerfile
+    container_name: training-service
+    restart: unless-stopped
+    env_file:
+      - ./training-service/.env
+    depends_on:
+      - training-mongo
+      - user-service
+    ports:
+      - "4003:4003"
+    networks:
+      - training-network
+
+  attendance-service:
+    build:
+      context: ./attendance-service
+      dockerfile: Dockerfile
+    container_name: attendance-service
+    restart: unless-stopped
+    env_file:
+      - ./attendance-service/.env
+    depends_on:
+      - attendance-mongo
+      - user-service
+      - training-service
+    ports:
+      - "4004:4004"
+    networks:
+      - training-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: unless-stopped
+    depends_on:
+      - auth-service
+      - user-service
+      - training-service
+      - attendance-service
+    ports:
+      - "3000:80"
+    networks:
+      - training-network
+
+networks:
+  training-network:
+    driver: bridge
+
+volumes:
+  auth_mongo_data:
+  user_mongo_data:
+  training_mongo_data:
+  attendance_mongo_data:
